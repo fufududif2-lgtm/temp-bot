@@ -7,40 +7,41 @@ const client = new Client({
     ]
 });
 
-// ضع هنا ID الروم الصوتية الرئيسية التي يدخلها الأعضاء لإنشاء روم جديدة
-const CREATE_CHANNEL_ID = 'ضع_هنا_ID_الروم_الرئيسية'; 
+// ضع ID الروم الصوتية الرئيسية هنا
+const CREATE_CHANNEL_ID = '1234567890123456789'; 
 
-// مصفوفة لحفظ أرقام الرومات المؤقتة التي تم إنشاؤها
 const tempChannels = new Set();
 
+client.on('ready', () => {
+    console.log(`Bot Online! Logged in as ${client.user.tag}`);
+});
+
 client.on('voiceStateUpdate', async (oldState, newState) => {
-    // 1. عند دخول العضو للروم الرئيسية
+    // 1. عند دخول الروم الرئيسية -> إنشاء روم جديدة
     if (newState.channelId === CREATE_CHANNEL_ID) {
         const guild = newState.guild;
         const user = newState.member.user;
 
-        // إنشاء روم جديدة باسم الشخص
-        const createdChannel = await guild.channels.create({
-            name: `🔊 ${user.username}'s Room`,
-            type: ChannelType.GuildVoice,
-            parent: newState.channel.parentId, // إنشاؤها في نفس القسم (Category)
-        });
+        try {
+            const createdChannel = await guild.channels.create({
+                name: `🔊 ${user.username}`,
+                type: ChannelType.GuildVoice,
+                parent: newState.channel.parentId,
+            });
 
-        // إضافة الروم للمصفوفة لنعرف أنها روم مؤقتة
-        tempChannels.add(createdChannel.id);
-
-        // نقل العضو للروم الجديدة
-        await newState.setChannel(createdChannel);
+            tempChannels.add(createdChannel.id);
+            await newState.setChannel(createdChannel);
+        } catch (error) {
+            console.error('Error creating channel:', error);
+        }
     }
 
-    // 2. عند خروج العضو من أي روم
+    // 2. عند خروج عضو وتفريغ الروم -> حذف الروم المؤقتة
     if (oldState.channel) {
         const oldChannel = oldState.channel;
-
-        // التأكد أن الروم من ضمن الرومات المؤقتة وأنها أصبحت فارغة (0 أعضاء)
         if (tempChannels.has(oldChannel.id) && oldChannel.members.size === 0) {
             tempChannels.delete(oldChannel.id);
-            await oldChannel.delete().catch(() => null);
+            await oldChannel.delete().catch(err => console.error('Error deleting channel:', err));
         }
     }
 });
