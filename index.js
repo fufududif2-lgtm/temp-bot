@@ -7,8 +7,8 @@ const client = new Client({
     ]
 });
 
-// ضع ID الروم الصوتية الرئيسية هنا
-const CREATE_CHANNEL_ID = '1234567890123456789'; 
+// ID روم Create الخاصة بسيرفرك
+const CREATE_CHANNEL_ID = '1280053913072210002'; 
 
 const tempChannels = new Set();
 
@@ -17,7 +17,7 @@ client.on('ready', () => {
 });
 
 client.on('voiceStateUpdate', async (oldState, newState) => {
-    // 1. عند دخول الروم الرئيسية -> إنشاء روم جديدة
+    // 1. عند دخول العضو روم Create ينشئ له روم جديدة وينقله فوراً
     if (newState.channelId === CREATE_CHANNEL_ID) {
         const guild = newState.guild;
         const user = newState.member.user;
@@ -26,7 +26,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
             const createdChannel = await guild.channels.create({
                 name: `🔊 ${user.username}`,
                 type: ChannelType.GuildVoice,
-                parent: newState.channel.parentId,
+                parent: newState.channel ? newState.channel.parentId : null,
             });
 
             tempChannels.add(createdChannel.id);
@@ -36,7 +36,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
         }
     }
 
-    // 2. عند خروج عضو وتفريغ الروم -> حذف الروم المؤقتة
+    // 2. عند خروج العضو وتصبح الروم المؤقتة 0 أعضاء يتم حذفها فوراً
     if (oldState.channel) {
         const oldChannel = oldState.channel;
         if (tempChannels.has(oldChannel.id) && oldChannel.members.size === 0) {
@@ -46,4 +46,5 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
     }
 });
 
+// تسجيل الدخول باستخدام التوكن المحفوظ في متغيرات البيئة بـ Render
 client.login(process.env.DISCORD_TOKEN);
